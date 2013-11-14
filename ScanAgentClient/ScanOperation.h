@@ -9,6 +9,7 @@
 #import <Foundation/Foundation.h>
 #import "ScanAgent.h"
 
+#pragma mark - ProgressProtocol definition
 @protocol ProgressProtocol <NSObject>
 
 - (void)onProgressTotalUpdate:(NSInteger)number clearStats:(BOOL)doClear;
@@ -17,6 +18,7 @@
 
 @end
 
+#pragma mark - ControllerOperation (initiate worker operations)
 @interface ControllerOperation : NSOperation {
     NSArray *_selection;
     NSOperationQueue *_queue;
@@ -29,6 +31,7 @@
 
 @end
 
+#pragma mark - ScanOperation (do the scan job)
 @interface ScanOperation : NSOperation {
     NSString *_filePath;
     id<ScanAgent> _agent;

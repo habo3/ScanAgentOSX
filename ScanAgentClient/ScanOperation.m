@@ -8,6 +8,7 @@
 
 #import "ScanOperation.h"
 
+#pragma mark - ControllerOperation implementation
 @implementation ControllerOperation
 
 - (id)initWithSelection:(NSArray *)selection
@@ -80,6 +81,7 @@
 
 @end
 
+#pragma mark - ScanOperation implementation
 @implementation ScanOperation
 
 - (id)initWithFilePath:(NSString *)filePath delegate:(id<ProgressProtocol>)delegate {
@@ -109,7 +111,7 @@
               }];
     
     while(!respondProcessed && ![self isCancelled]) {
-        [[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:1]];
+        [[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.1]];
     }
     
 }
