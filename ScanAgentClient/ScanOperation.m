@@ -8,21 +8,16 @@
 
 #import "ScanOperation.h"
 
-@implementation ScanOperation
+@implementation ControllerOperation
 
-- (id)initWithSelection:(NSArray *)selection delegate:(id<ProgressProtocol>)delegate {
+- (id)initWithSelection:(NSArray *)selection
+         operationQueue:(NSOperationQueue *)queue
+               delegate:(id<ProgressProtocol>)delegate
+ {
     if (self = [super init]) {
+        _queue = queue;
         _selection = selection;
         _delegate = delegate;
-        
-        // Insert code here to initialize your application
-        NSXPCConnection *connection =
-        [[NSXPCConnection alloc] initWithServiceName:@"com.comodo.ScanService"];
-        connection.remoteObjectInterface = [NSXPCInterface interfaceWithProtocol:@protocol(ScanAgent)];
-        
-        [connection resume];
-        
-        _agent = [connection remoteObjectProxy];
     }
     
     return self;
@@ -59,38 +54,64 @@
 
         if( number ) {
             ++(*number);
-            continue;
+            dispatch_sync( dispatch_get_main_queue(), ^{
+                [_delegate onProgressTotalUpdate:*number clearStats:NO];
+            });
         }
         
-        __block BOOL respondProcessed = NO;
-        [_agent scanFileByPath:filePath
-                  malwareGUIDs:^(NSArray *guids){
-                      respondProcessed = YES;
-                      dispatch_async( dispatch_get_main_queue(), ^{
-                          [_delegate onDidScanFile:filePath withGUIDs:guids];
-                      });
-                  }];
+        ScanOperation *nextOperation = [[ScanOperation alloc] initWithFilePath:filePath
+                                                                      delegate:_delegate];
+        [_queue addOperation:nextOperation];
         
-        while(!respondProcessed && ![self isCancelled]) {
-            [[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:1]];
-        }
     }
 }
 
 - (void)main {
 
+    dispatch_sync( dispatch_get_main_queue(), ^{
+        [_delegate onProgressTotalUpdate:1 clearStats:YES];
+    });
+
     int total = 0;
     for(NSURL *nextItem in _selection) {
         [self openEachFileAt:nextItem.path total:&total];
     }
+}
 
-    dispatch_async( dispatch_get_main_queue(), ^{
-        [_delegate onBeginScanWithTotals:total];
-    });
+@end
 
-    for(NSURL *nextItem in _selection) {
-        [self openEachFileAt:nextItem.path total:nil];
+@implementation ScanOperation
+
+- (id)initWithFilePath:(NSString *)filePath delegate:(id<ProgressProtocol>)delegate {
+    
+    if( self = [super init]) {
+        _filePath = filePath;
+        _delegate = delegate;
+        NSXPCConnection *connection =
+        [[NSXPCConnection alloc] initWithServiceName:@"com.comodo.ScanService"];
+        connection.remoteObjectInterface = [NSXPCInterface interfaceWithProtocol:@protocol(ScanAgent)];
+        [connection resume];
+        
+        _agent = [connection remoteObjectProxy];
     }
+    
+    return self;
+}
+
+- (void)main {
+    __block BOOL respondProcessed = NO;
+    [_agent scanFileByPath:_filePath
+              malwareGUIDs:^(NSArray *guids){
+                  respondProcessed = YES;
+                  dispatch_async( dispatch_get_main_queue(), ^{
+                      [_delegate onDidScanFile:_filePath withGUIDs:guids];
+                  });
+              }];
+    
+    while(!respondProcessed && ![self isCancelled]) {
+        [[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:1]];
+    }
+    
 }
 
 @end

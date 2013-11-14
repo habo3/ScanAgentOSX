@@ -22,7 +22,7 @@
 {
     
     _scanningQueue = [NSOperationQueue new];
-    [_scanningQueue setMaxConcurrentOperationCount:5];
+    [_scanningQueue setMaxConcurrentOperationCount:10];
     
     // Insert code here to initialize your application
     NSXPCConnection *connection =
@@ -65,9 +65,11 @@
         [openDlg close];
         
         [_scanningQueue cancelAllOperations];
-        [_scanningQueue addOperation:[[ScanOperation alloc] initWithSelection:selection
-                                                                     delegate:self]];
+        [_scanningQueue addOperation:[[ControllerOperation alloc] initWithSelection:selection
+                                                                     operationQueue:_scanningQueue
+                                                                           delegate:self]];
 
+        window.title = [[selection firstObject] path];
         if( NO == [window isVisible]) {
             [window makeKeyAndOrderFront:self];
             [window center];
@@ -77,10 +79,12 @@
     }
 }
 
-- (void) onBeginScanWithTotals:(NSInteger)number {
-    _state.processedCount = 0;
-    _state.infectedCount = 0;
-    _state.totalToScan = number;
+- (void)onProgressTotalUpdate:(NSInteger)number clearStats:(BOOL)doClear {
+    if( doClear ) {
+        _state.processedCount = 0;
+        _state.infectedCount = 0;
+    }
+    _state.totalToScan = (int)number;
     [self updateStatusWith:nil];
 }
 
@@ -113,6 +117,7 @@
     } else
     if(activityInProgress) {
         [progressIndicator setDoubleValue:(double)_state.processedCount];
+        [progressIndicator setMaxValue:(double)_state.totalToScan];
         
         [progress setStringValue:[NSString stringWithFormat:@"Scanning %d of %d",
                                   _state.processedCount, _state.totalToScan]];
