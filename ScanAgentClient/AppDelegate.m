@@ -67,15 +67,17 @@
         [_scanningQueue cancelAllOperations];
         [_scanningQueue addOperation:[[ScanOperation alloc] initWithSelection:selection
                                                                      delegate:self]];
+
+        if( NO == [window isVisible]) {
+            [window makeKeyAndOrderFront:self];
+            [window center];
+        }
+        [self updateStatusWith:nil];
+
     }
 }
 
 - (void) onBeginScanWithTotals:(NSInteger)number {
-    if( NO == [window isVisible]) {
-        [window makeKeyAndOrderFront:self];
-        [window center];
-    }
-    
     _state.processedCount = 0;
     _state.infectedCount = 0;
     _state.totalToScan = number;
@@ -102,8 +104,9 @@
 
 - (void)updateStatusWith:(NSArray *)guids {
     
+    BOOL activityIteratesFiles = (0 == _state.totalToScan);
     BOOL activityInProgress = (_state.processedCount && _state.processedCount < _state.totalToScan);
-    BOOL activityCompleted = (_state.processedCount >= _state.totalToScan);
+    BOOL activityCompleted = !activityIteratesFiles && (_state.processedCount >= _state.totalToScan);
     
     if(activityCompleted) {
         [progress setStringValue:@"Scanning completed"];
@@ -119,6 +122,12 @@
                                          _state.infectedCount]];
         }
         
+    } else
+    if(activityIteratesFiles){
+        [progress setStringValue:@"Scanning initialisation..."];
+        [_statistics setStringValue:@""];
+        [progressIndicator setDoubleValue:0.0];
+        [progressIndicator setMaxValue:1.0];
     } else {
         [progress setStringValue:@"Scanning started"];
         [_statistics setStringValue:[NSString stringWithFormat:@"Infected %d files", 0]];

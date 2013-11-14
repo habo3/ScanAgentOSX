@@ -13,9 +13,9 @@
     NSOperationQueue *_scanningQueue;
     
     struct ScanState {
-        NSInteger infectedCount;
-        NSInteger processedCount;
-        NSInteger totalToScan;
+        int infectedCount;
+        int processedCount;
+        int totalToScan;
     } _state;
 }
 
